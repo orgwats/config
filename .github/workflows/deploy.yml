@@ -20,7 +20,7 @@ jobs:
       - name: Build Go Lambda binary
         run: |
           mkdir -p build
-          GOOS=linux GOARCH=amd64 go build -o build/main ./cmd/lambda
+          GOOS=linux GOARCH=amd64 go build -o build/main ./cmd
 
       - name: Zip Lambda binary
         run: |
