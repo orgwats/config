@@ -32,7 +32,7 @@ jobs:
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          region: ap-northeast-2
+          aws_region: ap-northeast-2
           function_name: config
           zip_file: build/main.zip
 
