@@ -1,0 +1,47 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23'
+
+      - name: Build Go Lambda binary
+        run: |
+          mkdir -p build
+          GOOS=linux GOARCH=amd64 go build -o build/main ./cmd/lambda
+
+      - name: Zip Lambda binary
+        run: |
+          cd build
+          zip main.zip main
+
+      - name: Upload Lambda code to AWS
+        uses: appleboy/lambda-action@v0.1.7
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          region: ap-northeast-2
+          function_name: config
+          zip_file: build/main.zip
+
+      - name: Update Lambda environment variables
+        run: |
+          aws lambda update-function-configuration \
+            --function-name config \
+            --environment "Variables={BUCKET=${{ secrets.BUCKET }}}"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ap-northeast-2
