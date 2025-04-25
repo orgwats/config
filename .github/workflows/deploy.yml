@@ -28,19 +28,11 @@ jobs:
           zip main.zip bootstrap
 
       - name: Upload Lambda code to AWS
-        uses: appleboy/lambda-action@v0.1.7
-        with:
-          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_region: ap-northeast-2
-          function_name: config
-          zip_file: build/main.zip
-
-      - name: Update Lambda environment variables
         run: |
-          aws lambda update-function-configuration \
+          aws lambda update-function-code \
             --function-name config \
-            --environment "Variables={BUCKET=${{ secrets.BUCKET }}}"
+            --zip-file fileb://build/main.zip \
+            --region ap-northeast-2
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
