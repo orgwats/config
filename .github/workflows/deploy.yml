@@ -20,12 +20,12 @@ jobs:
       - name: Build Go Lambda binary
         run: |
           mkdir -p build
-          GOOS=linux GOARCH=amd64 go build -o build/main ./cmd
+          GOOS=linux GOARCH=amd64 go build -o build/bootstrap ./cmd
 
       - name: Zip Lambda binary
         run: |
           cd build
-          zip main.zip main
+          zip main.zip bootstrap
 
       - name: Upload Lambda code to AWS
         uses: appleboy/lambda-action@v0.1.7
