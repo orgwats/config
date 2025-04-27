@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
@@ -18,10 +19,12 @@ var (
 )
 
 func GetConfig(req events.LambdaFunctionURLRequest) (events.LambdaFunctionURLResponse, error) {
-	serviceName := req.QueryStringParameters["service"]
-	if serviceName == "" {
+	serviceParam := req.QueryStringParameters["service"]
+	if serviceParam == "" {
 		return errorResponse(400, "Missing 'service' query parameter")
 	}
+
+	serviceNames := strings.Split(serviceParam, ",")
 
 	result, err := s3Client.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String(bucket),
@@ -48,16 +51,19 @@ func GetConfig(req events.LambdaFunctionURLRequest) (events.LambdaFunctionURLRes
 		return errorResponse(500, "Missing 'service' section in config file")
 	}
 
-	serviceConfig, ok := serviceConfigs[serviceName]
-	if !ok {
-		return errorResponse(400, fmt.Sprintf("Unknown service: %s", serviceName))
+	selectedServices := make(map[string]interface{})
+	for _, name := range serviceNames {
+		name = strings.TrimSpace(name)
+		if svc, ok := serviceConfigs[name]; ok {
+			selectedServices[name] = svc
+		} else {
+			return errorResponse(400, fmt.Sprintf("Unknown service: %s", name))
+		}
 	}
 
 	merged := map[string]interface{}{
-		"common": commonConfig,
-		"service": map[string]interface{}{
-			serviceName: serviceConfig,
-		},
+		"common":  commonConfig,
+		"service": selectedServices,
 	}
 
 	body, _ := json.MarshalIndent(merged, "", "  ")
