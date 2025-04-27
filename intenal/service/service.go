@@ -19,13 +19,6 @@ var (
 )
 
 func GetConfig(req events.LambdaFunctionURLRequest) (events.LambdaFunctionURLResponse, error) {
-	serviceParam := req.QueryStringParameters["service"]
-	if serviceParam == "" {
-		return errorResponse(400, "Missing 'service' query parameter")
-	}
-
-	serviceNames := strings.Split(serviceParam, ",")
-
 	result, err := s3Client.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String("config.json"),
@@ -51,13 +44,22 @@ func GetConfig(req events.LambdaFunctionURLRequest) (events.LambdaFunctionURLRes
 		return errorResponse(500, "Missing 'service' section in config file")
 	}
 
-	selectedServices := make(map[string]interface{})
-	for _, name := range serviceNames {
-		name = strings.TrimSpace(name)
-		if svc, ok := serviceConfigs[name]; ok {
-			selectedServices[name] = svc
-		} else {
-			return errorResponse(400, fmt.Sprintf("Unknown service: %s", name))
+	serviceParam := req.QueryStringParameters["service"]
+
+	var selectedServices map[string]interface{}
+
+	if serviceParam == "" {
+		selectedServices = serviceConfigs
+	} else {
+		serviceNames := strings.Split(serviceParam, ",")
+		selectedServices = make(map[string]interface{})
+		for _, name := range serviceNames {
+			name = strings.TrimSpace(name)
+			if svc, ok := serviceConfigs[name]; ok {
+				selectedServices[name] = svc
+			} else {
+				return errorResponse(400, fmt.Sprintf("Unknown service: %s", name))
+			}
 		}
 	}
 
