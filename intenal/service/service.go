@@ -16,24 +16,24 @@ var (
 	bucket   = os.Getenv("BUCKET")
 )
 
-func GetConfig(req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func GetConfig(req events.LambdaFunctionURLRequest) (events.LambdaFunctionURLResponse, error) {
 	result, err := s3Client.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String("config.json"),
 	})
 	if err != nil {
 		log.Println("S3 error:", err)
-		return events.APIGatewayProxyResponse{StatusCode: 404, Body: "Config not found"}, nil
+		return events.LambdaFunctionURLResponse{StatusCode: 404, Body: "Config not found"}, nil
 	}
 
 	var config map[string]interface{}
 	if err := json.NewDecoder(result.Body).Decode(&config); err != nil {
 		log.Println("Decode error:", err)
-		return events.APIGatewayProxyResponse{StatusCode: 500, Body: "Decode error"}, nil
+		return events.LambdaFunctionURLResponse{StatusCode: 500, Body: "Decode error"}, nil
 	}
 
 	body, _ := json.MarshalIndent(config, "", "  ")
-	return events.APIGatewayProxyResponse{
+	return events.LambdaFunctionURLResponse{
 		StatusCode: 200,
 		Headers:    map[string]string{"Content-Type": "application/json"},
 		Body:       string(body),
