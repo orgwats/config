@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 
@@ -17,25 +18,63 @@ var (
 )
 
 func GetConfig(req events.LambdaFunctionURLRequest) (events.LambdaFunctionURLResponse, error) {
+	serviceName := req.QueryStringParameters["service"]
+	if serviceName == "" {
+		return errorResponse(400, "Missing 'service' query parameter")
+	}
+
 	result, err := s3Client.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String("config.json"),
 	})
 	if err != nil {
 		log.Println("S3 error:", err)
-		return events.LambdaFunctionURLResponse{StatusCode: 404, Body: "Config not found"}, nil
+		return errorResponse(404, "Config file not found")
 	}
 
 	var config map[string]interface{}
 	if err := json.NewDecoder(result.Body).Decode(&config); err != nil {
 		log.Println("Decode error:", err)
-		return events.LambdaFunctionURLResponse{StatusCode: 500, Body: "Decode error"}, nil
+		return errorResponse(500, "Failed to decode config file")
 	}
 
-	body, _ := json.MarshalIndent(config, "", "  ")
+	commonConfig, ok := config["common"]
+	if !ok {
+		return errorResponse(500, "Missing 'common' in config file")
+	}
+
+	serviceConfigs, ok := config["service"].(map[string]interface{})
+	if !ok {
+		return errorResponse(500, "Missing 'service' section in config file")
+	}
+
+	serviceConfig, ok := serviceConfigs[serviceName]
+	if !ok {
+		return errorResponse(400, fmt.Sprintf("Unknown service: %s", serviceName))
+	}
+
+	merged := map[string]interface{}{
+		"common": commonConfig,
+		"service": map[string]interface{}{
+			serviceName: serviceConfig,
+		},
+	}
+
+	body, _ := json.MarshalIndent(merged, "", "  ")
 	return events.LambdaFunctionURLResponse{
 		StatusCode: 200,
 		Headers:    map[string]string{"Content-Type": "application/json"},
 		Body:       string(body),
+	}, nil
+}
+
+func errorResponse(status int, message string) (events.LambdaFunctionURLResponse, error) {
+	errorBody, _ := json.Marshal(map[string]string{
+		"error": message,
+	})
+	return events.LambdaFunctionURLResponse{
+		StatusCode: status,
+		Headers:    map[string]string{"Content-Type": "application/json"},
+		Body:       string(errorBody),
 	}, nil
 }
